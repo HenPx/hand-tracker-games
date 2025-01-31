@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Squid Game Line Following Challenge</title>
+    <style>
+        body {
+            text-align: center;
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            color: #ff6f61;
+        }
+        #video {
+            width: 80%;
+            margin-top: 20px;
+            border: 2px solid #ccc;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>Squid Game Line Following Challenge</h1>
+    <p>Use your finger to follow the green line!</p>
+    <img id="video" src="{{ url_for('video_feed') }}" alt="Video Feed">
+</body>
+</html>
