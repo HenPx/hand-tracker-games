@@ -12,7 +12,7 @@ hands = mp_hands.Hands()
 mp_draw = mp.solutions.drawing_utils
 
 # Konfigurasi garis (dari kiri ke kanan)
-line_y = 300  # Garis berada di tengah layar
+line_y = 200  # Garis berada di tengah layar
 line_thickness = 40  # Ketebalan garis
 tolerance = line_thickness//2   # Batas toleransi keluar garis
 
@@ -49,8 +49,8 @@ def detect_restart_gesture(hand_landmarks):
 
 def game_camera():
     global player_path, is_drawing, start_reached, finish_reached, game_failed
-
-    cap = cv2.VideoCapture(0)
+    
+    cap = cv2.VideoCapture(1) 
 
     while True:
         ret, frame = cap.read()
