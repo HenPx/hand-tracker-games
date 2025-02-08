@@ -1,0 +1,6 @@
+Adi: 3.91 seconds
+Jaya: 4.88 seconds
+Putra: 3.84 seconds
+Player: 4.40 seconds
+Player: 5.27 seconds
+Player: 2.89 seconds

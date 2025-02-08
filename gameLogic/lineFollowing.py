@@ -2,6 +2,7 @@ import cv2
 import mediapipe as mp
 import numpy as np
 import math
+import time
 
 # MediaPipe Hand Detection
 mp_hands = mp.solutions.hands
@@ -16,13 +17,19 @@ start_x = 500
 finish_x = 1500
 point_radius = 10
 wave_amplitude = 70  # Amplitudo sinus
-wave_frequency = 0.002  # Frekuensi sinus
+wave_frequency = 0.003  # Jumlah gelombang
 
 player_path = []
 is_drawing = False
 start_reached = False
 finish_reached = False
 game_failed = False
+start_time = 0
+end_time = 0
+elapsed_time = 0
+
+# Leaderboard file
+leaderboard_file = "storage/lineFoll_leadearboard.txt"
 
 def sinusoidal_y(x):
     return int(line_y + wave_amplitude * math.sin(wave_frequency * (x - start_x) * 2 * math.pi))
@@ -47,8 +54,35 @@ def detect_index_only(hand_landmarks):
     little = hand_landmarks.landmark[20].y
     return index < thumb and index < little and index < middle and index < ring
 
+def save_to_leaderboard(name, time_taken):
+    with open(leaderboard_file, "a") as file:
+        file.write(f"{name}: {time_taken:.2f} seconds\n")
+
+def read_leaderboard():
+    try:
+        with open(leaderboard_file, "r") as file:
+            leaderboard = file.readlines()
+            leaderboard_data = []
+
+            # Extract player name and time from each entry and store as tuples (name, time)
+            for entry in leaderboard:
+                name, time_str = entry.split(": ")
+                time_taken = float(time_str.split(" ")[0])  # Extract the time and convert to float
+                leaderboard_data.append((name, time_taken))
+
+            # Sort leaderboard by time taken in ascending order
+            leaderboard_data.sort(key=lambda x: x[1])
+
+            # Format the leaderboard back into the text format
+            sorted_leaderboard = [f"{name}: {time_taken:.2f} seconds\n" for name, time_taken in leaderboard_data]
+            return sorted_leaderboard
+    except FileNotFoundError:
+        return []
+
+
+
 def game_camera():
-    global player_path, is_drawing, start_reached, finish_reached, game_failed
+    global player_path, is_drawing, start_reached, finish_reached, game_failed, start_time, end_time, elapsed_time
 
     cap = cv2.VideoCapture(0)
 
@@ -73,8 +107,12 @@ def game_camera():
         # Gambar titik start dan finish
         if not start_reached:
             cv2.circle(frame, (start_x, sinusoidal_y(start_x)), point_radius, (0, 0, 255), -1)  # Merah
+            cv2.putText(frame, "Start!", (start_x-30, 270), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+
         if start_reached and not finish_reached:
             cv2.circle(frame, (finish_x, sinusoidal_y(finish_x)), point_radius, (0, 0, 255), -1)  # Merah
+            cv2.putText(frame, "Finish!", (finish_x-30, 348), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+
 
         # Deteksi tangan
         if results.multi_hand_landmarks:
@@ -96,6 +134,7 @@ def game_camera():
                     if detect_index_only(hand_landmarks):
                         is_drawing = True
                         start_reached = True  # Mulai permainan
+                        start_time = time.time()  # Mulai stopwatch
 
                 # Jika menggambar aktif dan belum gagal
                 if is_drawing and not game_failed:
@@ -105,11 +144,16 @@ def game_camera():
                     if not is_finger_in_line(finger_pos):
                         game_failed = True
                         is_drawing = False
-
+                        end_time = time.time()
+                        elapsed_time = end_time - start_time
+                        
                     # Jika sampai titik finish
                     if start_reached and abs(x - finish_x) <= point_radius:
                         finish_reached = True
                         is_drawing = False
+                        end_time = time.time()  # Selesai stopwatch
+                        elapsed_time = end_time - start_time
+                        save_to_leaderboard("Player", elapsed_time)  # Simpan leaderboard
 
                 # Gambar kursor di ujung jari telunjuk
                 cv2.circle(frame, finger_pos, 5, (0, 0, 255), 3)
@@ -125,11 +169,22 @@ def game_camera():
         if game_failed:
             cv2.putText(frame, "FAILED!", (w // 2 - 50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
         elif finish_reached:
-            cv2.putText(frame, "FINISH!", (w // 2 - 50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
+            cv2.putText(frame, f"FINISH! Waktu Anda: {elapsed_time:.2f}s", (w // 2 - 150, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 0), 3)
         elif is_drawing:
-            cv2.putText(frame, "Drawing...", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+            cv2.putText(frame, "Menggambar...", (w // 2 - 50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 255), 2)
         elif not start_reached:
-            cv2.putText(frame, "Move to Start!", (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 165, 255), 2)
+            cv2.putText(frame, "Bergerak ke titik Start!", (w // 2 - 50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 0), 2)
+
+        # Display stopwatch in the top-right corner with larger font size
+        if start_reached and not finish_reached and not game_failed:
+            elapsed_time = time.time() - start_time  # Real-time stopwatch
+            cv2.putText(frame, f"Time: {elapsed_time:.2f}s", (w - 350, 50), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
+
+        # Tampilkan leaderboard
+        leaderboard = read_leaderboard()
+        cv2.putText(frame, "Peringkat:", (20, h - 400), cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 255), 5)
+        for idx, line in enumerate(leaderboard[:5]):
+            cv2.putText(frame, f"{idx + 1}. {line.strip()}", (20, h - 350 + idx * 40), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
 
         # Encode frame sebagai JPEG
         _, buffer = cv2.imencode('.jpg', frame)
@@ -140,4 +195,4 @@ def game_camera():
                b'Content-Type: image/jpeg\r\n\r\n' + frame_bytes + b'\r\n')
 
     cap.release()
-    
+
