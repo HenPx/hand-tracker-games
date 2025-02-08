@@ -8,6 +8,16 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
+# Route untuk game line following
+@app.route('/line_following')
+def line_following():
+    return render_template('lineFoll.html')  
+
+# Route untuk game rps
+@app.route('/rps')
+def rps():
+    return render_template('rpsGame.html')  
+
 @app.route('/video_feed/<game>')
 def video_feed(game):
     if game == "line_following":
